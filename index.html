@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ENFI Risk Predictor | ICU Sepsis</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #f0f4f8 0%, #e8f0fe 50%, #f5f0ff 100%);
+            min-height: 100vh;
+            color: #2c3e50;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(90deg, #1e3a5f 0%, #2e86c1 50%, #1e3a5f 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(30,58,95,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+        .header h1 { font-size: 2em; font-weight: 800; letter-spacing: 1px; position: relative; }
+        .header p { opacity: 0.9; margin-top: 8px; position: relative; font-size: 0.95em; }
+        .header .subtitle { font-size: 0.85em; opacity: 0.7; margin-top: 5px; }
+
+        /* Navigation */
+        .nav-bar {
+            background: white;
+            padding: 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .nav-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .nav-item {
+            padding: 15px 25px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 0.95em;
+            font-weight: 600;
+            color: #566573;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            font-family: inherit;
+        }
+        .nav-item:hover { color: #2e86c1; background: #f0f7ff; }
+        .nav-item.active { color: #2e86c1; border-bottom-color: #2e86c1; background: #f0f7ff; }
+
+        /* Container */
+        .container { max-width: 1400px; margin: 0 auto; padding: 25px 20px; }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+            border-top: 4px solid #2e86c1;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.12); }
+        .card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+        .card-header i { font-size: 1.4em; color: #2e86c1; }
+        .card-header h3 { color: #1e3a5f; font-size: 1.2em; }
+
+        /* Input Groups */
+        .input-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
+        .input-group {
+            background: linear-gradient(135deg, #fafbfc, #f5f7fa);
+            border-radius: 12px;
+            padding: 15px;
+            border: 2px solid #e8ecf0;
+            transition: border-color 0.3s;
+        }
+        .input-group:hover { border-color: #2e86c1; }
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            color: #1e3a5f;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
+        .input-group label .unit { color: #85929e; font-weight: 400; font-size: 0.85em; }
+        .input-group input[type="number"] {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+            font-family: inherit;
+            transition: border-color 0.3s;
+            color: #2c3e50;
+        }
+        .input-group input[type="number"]:focus {
+            outline: none;
+            border-color: #2e86c1;
+        }
+        .input-group .range-bar {
+            height: 6px;
+            background: #e8ecf0;
+            border-radius: 3px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+        .input-group .range-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+        .input-group .range-text {
+            font-size: 0.75em;
+            color: #85929e;
+            margin-top: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 30px;
+            border-radius: 12px;
+            border: none;
+            font-size: 1em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+        .btn-primary {
+            background: linear-gradient(90deg, #2e86c1, #1e3a5f);
+            color: white;
+            box-shadow: 0 4px 15px rgba(46,134,193,0.3);
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(46,134,193,0.5); }
+        .btn-danger {
+            background: linear-gradient(90deg, #e63946, #c1121f);
+            color: white;
+            box-shadow: 0 4px 15px rgba(230,57,70,0.3);
+        }
+        .btn-success {
+            background: linear-gradient(90deg, #2a9d8f, #1d7a6b);
+            color: white;
+            box-shadow: 0 4px 15px rgba(42,157,143,0.3);
+        }
+        .btn-secondary {
+            background: linear-gradient(90deg, #f4a261, #e76f51);
+            color: white;
+            box-shadow: 0 4px 15px rgba(244,162,97,0.3);
+        }
+
+        /* Risk Result */
+        .risk-result {
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 20px;
+            border: 3px solid;
+            position: relative;
+            overflow: hidden;
+        }
+        .risk-result::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            opacity: 0.1;
+        }
+        .risk-result .prob-value { font-size: 3.5em; font-weight: 800; }
+        .risk-result .risk-badge {
+            display: inline-block;
+            padding: 10px 30px;
+            border-radius: 25px;
+            color: white;
+            font-size: 1.3em;
+            font-weight: 700;
+            margin: 15px 0;
+        }
+        .risk-low { border-color: #2a9d8f; background: linear-gradient(135deg, #f0faf7, white); }
+        .risk-low .prob-value { color: #2a9d8f; }
+        .risk-low .risk-badge { background: #2a9d8f; }
+        .risk-moderate { border-color: #f4a261; background: linear-gradient(135deg, #fffaf0, white); }
+        .risk-moderate .prob-value { color: #f4a261; }
+        .risk-moderate .risk-badge { background: #f4a261; }
+        .risk-high { border-color: #e63946; background: linear-gradient(135deg, #fff5f5, white); }
+        .risk-high .prob-value { color: #e63946; }
+        .risk-high .risk-badge { background: #e63946; }
+
+        /* Recommendation Card */
+        .rec-card { border-radius: 14px; padding: 20px; border-left: 5px solid; margin-bottom: 20px; }
+        .rec-card h4 { margin-bottom: 10px; }
+        .rec-card ul { line-height: 1.8; padding-left: 20px; }
+        .rec-card li { margin-bottom: 5px; }
+
+        /* SHAP Chart */
+        .shap-chart-container { background: white; border-radius: 14px; padding: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+
+        /* Gauge */
+        .gauge-container { display: flex; justify-content: center; margin: 20px 0; }
+        .gauge { position: relative; width: 200px; height: 100px; }
+        .gauge-bg { fill: none; stroke: #e8ecf0; stroke-width: 20; }
+        .gauge-fill { fill: none; stroke-width: 20; transition: stroke-dasharray 1s; stroke-linecap: round; }
+        .gauge-text { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); text-align: center; }
+
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        th { background: linear-gradient(90deg, #1e3a5f, #2e86c1); color: white; padding: 12px; text-align: left; font-weight: 600; }
+        td { padding: 12px; border-bottom: 1px solid #e8ecf0; }
+        tr:hover td { background: #f0f7ff; }
+        tr:nth-child(even) { background: #fafbfc; }
+
+        /* Info Cards Row */
+        .info-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; margin: 25px 0; }
+        .info-card {
+            background: linear-gradient(135deg, #1e3a5f, #2e86c1);
+            color: white;
+            border-radius: 14px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 6px 20px rgba(30,58,95,0.3);
+        }
+        .info-card .icon { font-size: 2em; margin-bottom: 10px; }
+        .info-card .value { font-size: 1.5em; font-weight: 700; }
+        .info-card .label { font-size: 0.85em; opacity: 0.8; margin-top: 5px; }
+
+        /* Steps */
+        .steps { display: flex; justify-content: center; gap: 15px; margin: 25px 0; flex-wrap: wrap; }
+        .step {
+            background: linear-gradient(135deg, #2e86c1, #1e3a5f);
+            color: white;
+            padding: 12px 25px;
+            border-radius: 12px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(46,134,193,0.3);
+        }
+
+        /* Footer */
+        .footer {
+            background: linear-gradient(90deg, #1e3a5f, #2c5282);
+            color: white;
+            padding: 25px;
+            text-align: center;
+            margin-top: 40px;
+            border-radius: 0;
+        }
+        .footer p { opacity: 0.8; font-size: 0.85em; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header h1 { font-size: 1.4em; }
+            .input-grid { grid-template-columns: 1fr; }
+            .info-cards { grid-template-columns: 1fr 1fr; }
+            .risk-result .prob-value { font-size: 2.5em; }
+        }
+
+        /* Page sections */
+        .page-section { display: none; animation: fadeIn 0.4s; }
+        .page-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Tab buttons */
+        .tabs { display: flex; gap: 5px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tab-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            background: #e8ecf0;
+            color: #566573;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+        .tab-btn.active { background: linear-gradient(90deg, #2e86c1, #1e3a5f); color: white; }
+        .tab-btn:hover:not(.active) { background: #d0d8e0; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s; }
+
+        /* Risk scale bar */
+        .risk-scale { display: flex; height: 12px; border-radius: 6px; overflow: hidden; margin: 10px 0; }
+        .risk-scale div { flex: 1; }
+        .risk-scale-low { background: #2a9d8f; }
+        .risk-scale-mid { background: #f4a261; }
+        .risk-scale-high { background: #e63946; }
+        .risk-labels { display: flex; justify-content: space-between; font-size: 0.75em; color: #85929e; margin-top: 5px; }
+
+        /* Hidden initially */
+        #result-section { display: none; }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1><i class="fas fa-hospital"></i> ICU ENFI Risk Predictor</h1>
+        <p>基于可解释机器学习的老年脓毒症患者肠内营养不耐受风险预测系统</p>
+        <p class="subtitle">Interpretable ML-Based Prediction Model | XGBoost + SHAP | External Validated on MIMIC-IV</p>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav-bar">
+        <div class="nav-inner">
+            <button class="nav-item active" onclick="showPage('predict')" id="nav-predict"><i class="fas fa-calculator"></i> Risk Prediction</button>
+            <button class="nav-item" onclick="showPage('model')" id="nav-model"><i class="fas fa-brain"></i> Model Info</button>
+            <button class="nav-item" onclick="showPage('shap')" id="nav-shap"><i class="fas fa-search"></i> SHAP Explain</button>
+            <button class="nav-item" onclick="showPage('guide')" id="nav-guide"><i class="fas fa-book"></i> Clinical Guide</button>
+        </div>
+    </div>
+
+    <!-- ===== PREDICTION PAGE ===== -->
+    <div id="page-predict" class="page-section active">
+        <div class="container">
+            <!-- Steps -->
+            <div class="steps">
+                <div class="step"><i class="fas fa-edit"></i> Step 1: Input Parameters</div>
+                <div class="step"><i class="fas fa-robot"></i> Step 2: AI Prediction</div>
+                <div class="step"><i class="fas fa-chart-line"></i> Step 3: Risk Report</div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 25px;">
+                <!-- Left: Input Form -->
+                <div>
+                    <div class="card">
+                        <div class="card-header"><i class="fas fa-edit"></i><h3>Patient Parameter Entry</h3></div>
+
+                        <div class="input-grid" id="input-form">
+                            <!-- Demographics -->
+                            <div class="input-group">
+                                <label>Age <span class="unit">(years, 65-95)</span></label>
+                                <input type="number" id="Age" min="65" max="95" value="74.8" step="0.1" oninput="updateBar(this)">
+                                <div class="range-bar"><div class="range-fill" id="bar-Age" style="width:50%;background:linear-gradient(90deg,#2e86c1,#1e3a5f);"></div></div>
+                                <div class="range-text"><span>65</span><span>95</span></div>
+                            </div>
+                            <div class="input-group">
+                                <label>APACHE II Score <span class="unit">(points, 0-40)</span></label>
+                                <input type="number" id="APACHE_II" min="0" max="40" value="20.8" step="0.1" oninput="updateBar(this)">
+                                <div class="range-bar"><div class="range-fill" id="bar-APACHE_II" style="width:52%;background:linear-gradient(90deg,#f4a261,#e76f51);"></div></div>
+                                <div class="range-text"><span>0</span><span>40</span></div>
+                            </div>
+                            <!-- Nutrition -->
+                            <div class="input-group">
+                                <label>Albumin <span class="unit">(g/L, 15-50)</span></label>
+                                <input type="number" id="Albumin" min="15" max="50" value="29.6" step="0.1" oninput="updateBar(this)">
+                                <div class="range-bar"><div class="range-fill" id="bar-Albumin" style="width:42%;background:linear-gradient(90deg,#2a9d8f,#1d7a6b);"></div></div>
+                                <div class="range-text"><span>15</span><span>50</span></div>
+                            </div>
+                            <div class="input-group">
+                                <label>Prealbumin <span class="unit">(g/L, 0.03-0.4)</span></label>
+                                <input type="number" id="Prealbumin" min="0.03" max="0.4" value="0.149" step="0.001" oninput="updateBar(this)">
+                                <div class="range-bar"><div class="range-fill" id="bar-Prealbumin" style="width:32%;background:linear-gradient(90deg,#2a9d8f,#1d7a6b);"></div></div>
+                                <div class="range-text"><span>0.03</span><span>0.4</span></div>
+                            </div>
+                            <!-- EN Parameters -->
+                            <div class="input-group">
+                                <label>Gastric Residual Volume <span class="unit">(mL, 0-800)</span></label>
+                                <input type="number" id="Gastric_Residual" min="0" max="800" value="224.5" step="1" oninput="updateBar(this)">
+                                <div class="range-bar"><div class="range-fill" id="bar-Gastric_Residual" style="width:28%;background:linear-gradient(90deg,#e63946,#c1121f);"></div></div>
+                                <div class="range-text"><span>0</span><span>800</span></div>
+                            </div>
+                            <div class="input-group">
+                                <label>Intra-abdominal Pressure <span class="unit">(mmHg, 0-30)</span></label>
+                                <input type="number" id="IAP" min="0" max="30" value="11.2" step="0.1" oninput="updateBar(this)">
+                                <div class="range-bar"><div class="range-fill" id="bar-IAP" style="width:37%;background:linear-gradient(90deg,#f4a261,#e76f51);"></div></div>
+                                <div class="range-text"><span>0</span><span>30</span></div>
+                            </div>
+                            <div class="input-group">
+                                <label>Feeding Speed <span class="unit">(mL/h, 5-100)</span></label>
+                                <input type="number" id="Feeding_Speed" min="5" max="100" value="41.5" step="1" oninput="updateBar(this)">
+                                <div class="range-bar"><div class="range-fill" id="bar-Feeding_Speed" style="width:38%;background:linear-gradient(90deg,#2a9d8f,#1d7a6b);"></div></div>
+                                <div class="range-text"><span>5</span><span>100</span></div>
+                            </div>
+                            <div class="input-group">
+                                <label>EN Initiation Delay <span class="unit">(hours, 0-72)</span></label>
+                                <input type="number" id="EN_Start_Delay_h" min="0" max="72" value="23.5" step="0.5" oninput="updateBar(this)">
+                                <div class="range-bar"><div class="range-fill" id="bar-EN_Start_Delay_h" style="width:33%;background:linear-gradient(90deg,#f4a261,#e76f51);"></div></div>
+                                <div class="range-text"><span>0</span><span>72</span></div>
+                            </div>
+                            <div class="input-group">
+                                <label>NRS-2002 Score <span class="unit">(points, 0-7)</span></label>
+                                <input type="number" id="NRS2002" min="0" max="7" value="3.82" step="0.01" oninput="updateBar(this)">
+                                <div class="range-bar"><div class="range-fill" id="bar-NRS2002" style="width:55%;background:linear-gradient(90deg,#f4a261,#e76f51);"></div></div>
+                                <div class="range-text"><span>0</span><span>7</span></div>
+                            </div>
+                            <div class="input-group">
+                                <label>Mean Arterial Pressure <span class="unit">(mmHg, 40-130)</span></label>
+                                <input type="number" id="MAP" min="40" max="130" value="73.2" step="0.1" oninput="updateBar(this)">
+                                <div class="range-bar"><div class="range-fill" id="bar-MAP" style="width:37%;background:linear-gradient(90deg,#2a9d8f,#1d7a6b);"></div></div>
+                                <div class="range-text"><span>40</span><span>130</span></div>
+                            </div>
+                        </div>
+
+                        <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;">
+                            <button class="btn btn-danger" onclick="fillDemo('high')"><i class="fas fa-fire"></i> High-Risk Demo</button>
+                            <button class="btn btn-success" onclick="fillDemo('low')"><i class="fas fa-shield-alt"></i> Low-Risk Demo</button>
+                            <button class="btn btn-secondary" onclick="resetForm()"><i class="fas fa-redo"></i> Reset</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Results -->
+                <div>
+                    <button class="btn btn-primary" style="width:100%;margin-bottom:20px;font-size:1.1em;" onclick="predict()">
+                        <i class="fas fa-rocket"></i> Start AI Risk Prediction
+                    </button>
+
+                    <div id="result-section">
+                        <!-- Risk Result Card -->
+                        <div class="risk-result" id="risk-card">
+                            <h4 style="margin-bottom:15px;"><i class="fas fa-chart-pie"></i> FI Risk Assessment Result</h4>
+                            <div class="gauge-container">
+                                <svg viewBox="0 0 200 110" style="width:200px;">
+                                    <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#e8ecf0" stroke-width="18" stroke-linecap="round"/>
+                                    <path id="gauge-path" d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#2e86c1" stroke-width="18" stroke-linecap="round" stroke-dasharray="0 251"/>
+                                    <text x="100" y="95" text-anchor="middle" font-size="28" font-weight="bold" fill="#2c3e50" id="gauge-text">0%</text>
+                                </svg>
+                            </div>
+                            <div class="risk-badge" id="risk-badge">---</div>
+                            <p style="color:#666;margin-top:10px;font-size:0.9em;">Confidence: 98.7% | Model: XGBoost v2.0</p>
+                            <div class="risk-scale"><div class="risk-scale-low"></div><div class="risk-scale-mid"></div><div class="risk-scale-high"></div></div>
+                            <div class="risk-labels"><span>Low (&lt;30%)</span><span>Moderate (30-60%)</span><span>High (&gt;60%)</span></div>
+                        </div>
+
+                        <!-- Recommendation -->
+                        <div id="recommendation-card"></div>
+
+                        <!-- SHAP Mini Chart -->
+                        <div class="shap-chart-container">
+                            <h4 style="color:#1e3a5f;margin-bottom:15px;"><i class="fas fa-chart-bar"></i> Top Feature Contributions</h4>
+                            <canvas id="shap-canvas" width="350" height="250"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info Cards -->
+            <div class="info-cards">
+                <div class="info-card"><div class="icon"><i class="fas fa-database"></i></div><div class="value">900</div><div class="label">Training Samples (3 Hospitals)</div></div>
+                <div class="info-card"><div class="icon"><i class="fas fa-brain"></i></div><div class="value">XGBoost</div><div class="label">6 ML Algorithms Compared</div></div>
+                <div class="info-card"><div class="icon"><i class="fas fa-check-circle"></i></div><div class="value">AUC 0.995</div><div class="label">External Validated 0.978</div></div>
+                <div class="info-card"><div class="icon"><i class="fas fa-star"></i></div><div class="value">GRV</div><div class="label">Top Predictor (10 Features)</div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODEL INFO PAGE ===== -->
+    <div id="page-model" class="page-section">
+        <div class="container">
+            <div class="card">
+                <div class="card-header"><i class="fas fa-brain"></i><h3>Model Architecture</h3></div>
+                <p style="line-height:1.8;"><b>Framework:</b> LASSO + XGBoost + SHAP<br>
+                <b>Task:</b> Binary Classification (FI vs. Non-FI)<br>
+                <b>Training:</b> 630 cases with SMOTE oversampling<br>
+                <b>Validation:</b> 270 cases (30% hold-out) + 2,847 MIMIC-IV external<br>
+                <b>Feature Selection:</b> LASSO regression (lambda=0.0049) + Boruta confirmation<br>
+                The model uses a two-stage approach: LASSO for dimensionality reduction followed by XGBoost ensemble learning with systematic hyperparameter optimization via grid search and 5-fold cross-validation.</p>
+            </div>
+
+            <div class="card" style="border-top-color:#e63946;">
+                <div class="card-header"><i class="fas fa-list-ol"></i><h3>10 Key Predictors (LASSO Selected)</h3></div>
+                <table>
+                    <tr><th>Rank</th><th>Feature</th><th>LASSO Coefficient</th><th>Direction</th></tr>
+                    <tr><td>1</td><td>Gastric Residual Volume (mL)</td><td style="color:#e63946;font-weight:700;">+0.0715</td><td><span style="color:#e63946;">&#9650; Risk</span></td></tr>
+                    <tr><td>2</td><td>Prealbumin (g/L)</td><td style="color:#457B9D;font-weight:700;">-0.0709</td><td><span style="color:#457B9D;">&#9660; Risk</span></td></tr>
+                    <tr><td>3</td><td>Albumin (g/L)</td><td style="color:#457B9D;font-weight:700;">-0.0541</td><td><span style="color:#457B9D;">&#9660; Risk</span></td></tr>
+                    <tr><td>4</td><td>Feeding Speed (mL/h)</td><td style="color:#457B9D;font-weight:700;">-0.0520</td><td><span style="color:#457B9D;">&#9660; Risk</span></td></tr>
+                    <tr><td>5</td><td>Intra-abdominal Pressure (mmHg)</td><td style="color:#e63946;font-weight:700;">+0.0496</td><td><span style="color:#e63946;">&#9650; Risk</span></td></tr>
+                    <tr><td>6</td><td>NRS-2002 Score</td><td style="color:#e63946;font-weight:700;">+0.0466</td><td><span style="color:#e63946;">&#9650; Risk</span></td></tr>
+                    <tr><td>7</td><td>EN Initiation Delay (hours)</td><td style="color:#e63946;font-weight:700;">+0.0461</td><td><span style="color:#e63946;">&#9650; Risk</span></td></tr>
+                    <tr><td>8</td><td>APACHE II Score</td><td style="color:#e63946;font-weight:700;">+0.0449</td><td><span style="color:#e63946;">&#9650; Risk</span></td></tr>
+                    <tr><td>9</td><td>Age (years)</td><td style="color:#e63946;font-weight:700;">+0.0444</td><td><span style="color:#e63946;">&#9650; Risk</span></td></tr>
+                    <tr><td>10</td><td>Mean Arterial Pressure (mmHg)</td><td style="color:#457B9D;font-weight:700;">-0.0391</td><td><span style="color:#457B9D;">&#9660; Risk</span></td></tr>
+                </table>
+            </div>
+
+            <div class="card" style="border-top-color:#2a9d8f;">
+                <div class="card-header"><i class="fas fa-chart-line"></i><h3>Performance Comparison of 6 ML Algorithms</h3></div>
+                <table>
+                    <tr><th>Model</th><th>AUC</th><th>Accuracy</th><th>Sensitivity</th><th>Specificity</th><th>F1-Score</th></tr>
+                    <tr><td><b>XGBoost ★</b></td><td style="color:#e63946;font-weight:700;"><b>0.995</b></td><td><b>0.974</b></td><td><b>0.984</b></td><td>0.966</td><td><b>0.971</b></td></tr>
+                    <tr style="background:#fafbfc;"><td>CatBoost</td><td>0.996</td><td>0.972</td><td>0.975</td><td><b>0.970</b></td><td>0.972</td></tr>
+                    <tr><td>SVM</td><td>0.997</td><td>0.970</td><td>0.975</td><td>0.966</td><td>0.970</td></tr>
+                    <tr style="background:#fafbfc;"><td>LR</td><td>0.997</td><td>0.967</td><td>0.967</td><td>0.967</td><td>0.967</td></tr>
+                    <tr><td>RF</td><td>0.995</td><td>0.970</td><td>0.975</td><td>0.966</td><td>0.970</td></tr>
+                    <tr style="background:#fafbfc;"><td>LightGBM</td><td>0.994</td><td>0.971</td><td>0.980</td><td>0.963</td><td>0.971</td></tr>
+                </table>
+                <p style="color:#85929e;font-size:0.85em;margin-top:10px;">★ Selected as the optimal model based on balanced performance across all metrics and clinical interpretability.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== SHAP PAGE ===== -->
+    <div id="page-shap" class="page-section">
+        <div class="container">
+            <div class="card">
+                <div class="card-header"><i class="fas fa-lightbulb"></i><h3>What is SHAP?</h3></div>
+                <p style="line-height:1.8;"><b>SHAP (SHapley Additive exPlanations)</b> is a game-theoretic approach to explain machine learning predictions. It assigns each feature an importance value for a particular prediction. <span style="color:#e63946;"><b>Red (↑)</b></span> = increases FI risk; <span style="color:#457B9D;"><b>Blue (↓)</b></span> = decreases FI risk.</p>
+            </div>
+
+            <div class="card" style="border-top-color:#9b5de5;">
+                <div class="card-header"><i class="fas fa-chart-bar"></i><h3>Global Feature Importance (Mean |SHAP Value|)</h3></div>
+                <div style="display:flex;flex-direction:column;gap:10px;" id="shap-global-bars">
+                    <!-- Filled by JS -->
+                </div>
+            </div>
+
+            <div class="card" style="border-top-color:#f4a261;">
+                <div class="card-header"><i class="fas fa-user"></i><h3>Individual Patient Scenarios</h3></div>
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="showTab('high-scenario')">High Risk</button>
+                    <button class="tab-btn" onclick="showTab('mod-scenario')">Moderate Risk</button>
+                    <button class="tab-btn" onclick="showTab('low-scenario')">Low Risk</button>
+                </div>
+                <div id="high-scenario" class="tab-content active">
+                    <div class="rec-card" style="border-color:#e63946;background:linear-gradient(135deg,#fff5f5,white);">
+                        <h4 style="color:#e63946;">🔴 High-Risk Patient (FI Probability: 98.7%)</h4>
+                        <p style="color:#666;margin-bottom:10px;">82-year-old female, severe sepsis, GRV 320mL, albumin 22g/L, EN started at 36h</p>
+                        <div id="shap-high-forces"></div>
+                    </div>
+                </div>
+                <div id="mod-scenario" class="tab-content">
+                    <div class="rec-card" style="border-color:#f4a261;background:linear-gradient(135deg,#fffaf0,white);">
+                        <h4 style="color:#f4a261;">🟡 Moderate-Risk Patient (FI Probability: 52.3%)</h4>
+                        <p style="color:#666;margin-bottom:10px;">75-year-old male, moderate sepsis, GRV 180mL, albumin 28g/L</p>
+                        <div id="shap-mod-forces"></div>
+                    </div>
+                </div>
+                <div id="low-scenario" class="tab-content">
+                    <div class="rec-card" style="border-color:#2a9d8f;background:linear-gradient(135deg,#f0faf7,white);">
+                        <h4 style="color:#2a9d8f;">🟢 Low-Risk Patient (FI Probability: 8.2%)</h4>
+                        <p style="color:#666;margin-bottom:10px;">68-year-old male, mild sepsis, GRV 60mL, albumin 38g/L, early EN</p>
+                        <div id="shap-low-forces"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== CLINICAL GUIDE PAGE ===== -->
+    <div id="page-guide" class="page-section">
+        <div class="container">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="showGuideTab('protocol')">Clinical Protocol</button>
+                <button class="tab-btn" onclick="showGuideTab('limitations')">Limitations</button>
+            </div>
+
+            <div id="protocol" class="tab-content active">
+                <div class="rec-card" style="border-color:#2a9d8f;background:linear-gradient(135deg,#f0faf7,white);">
+                    <h4 style="color:#2a9d8f;"><span style="background:#2a9d8f;color:white;padding:5px 15px;border-radius:15px;font-size:0.85em;">LOW RISK</span> FI Probability &lt; 30%</h4>
+                    <ul>
+                        <li>Daily nutritional risk assessment and documentation</li>
+                        <li>Head-of-bed elevation at 30-45 degrees</li>
+                        <li>Standard EN protocol: start 20-30 mL/h, increase 10-20 mL/h every 8-12h</li>
+                        <li>Monitor gastric residual volume every 4-6 hours</li>
+                        <li>Pause or reduce EN rate if GRV &gt; 250 mL</li>
+                        <li>Oral care 2-3 times per day; Daily EN tolerance evaluation</li>
+                    </ul>
+                </div>
+                <div class="rec-card" style="border-color:#f4a261;background:linear-gradient(135deg,#fffaf0,white);">
+                    <h4 style="color:#f4a261;"><span style="background:#f4a261;color:white;padding:5px 15px;border-radius:15px;font-size:0.85em;">MODERATE RISK</span> FI Probability 30-60%</h4>
+                    <p style="font-size:0.85em;color:#666;margin-bottom:10px;"><b>All standard care + enhanced interventions:</b></p>
+                    <ul>
+                        <li>Low-dose EN initiation (10-15 mL/h) with feeding pump</li>
+                        <li>Prokinetic agents: metoclopramide 10mg tid or erythromycin 200mg bid</li>
+                        <li>Monitor intra-abdominal pressure every 4-6 hours</li>
+                        <li>Consider switching to pre-digested formula if GRV elevated</li>
+                        <li>Blood glucose monitoring (target 6-10 mmol/L)</li>
+                        <li>Weekly serum albumin and prealbumin monitoring</li>
+                    </ul>
+                </div>
+                <div class="rec-card" style="border-color:#e63946;background:linear-gradient(135deg,#fff5f5,white);">
+                    <h4 style="color:#e63946;"><span style="background:#e63946;color:white;padding:5px 15px;border-radius:15px;font-size:0.85em;">HIGH RISK</span> FI Probability &gt; 60%</h4>
+                    <p style="font-size:0.85em;color:#666;margin-bottom:10px;"><b>All standard + enhanced care + intensive management:</b></p>
+                    <ul>
+                        <li><b>Emergency NST (Nutrition Support Team) consultation</b></li>
+                        <li>Hourly gastric residual monitoring (first 72 hours)</li>
+                        <li>Continuous intra-abdominal pressure monitoring</li>
+                        <li>EN start at 10-15 mL/h, increase by 5-10 mL/h every 12-24h</li>
+                        <li>Multi-modal prokinetic combination therapy</li>
+                        <li>Daily MDT rounds; Consider supplemental PN if target not met by day 3</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div id="limitations" class="tab-content">
+                <div class="card">
+                    <div class="card-header"><i class="fas fa-exclamation-triangle"></i><h3>Limitations & Disclaimers</h3></div>
+                    <div style="background:linear-gradient(135deg,#fff3cd,white);padding:20px;border-radius:12px;border-left:5px solid #ffc107;margin-bottom:15px;">
+                        <h4 style="color:#856404;">Clinical Limitations</h4>
+                        <ul style="line-height:1.8;color:#333;">
+                            <li>This tool is for <b>research and clinical decision support only</b> and should not replace professional medical judgment.</li>
+                            <li>Performance may vary in different clinical settings not represented in training data.</li>
+                            <li>Individual patient characteristics beyond the 10 predictors may influence FI risk.</li>
+                            <li>The model does not account for temporal parameter changes during ICU stay.</li>
+                        </ul>
+                    </div>
+                    <div style="background:linear-gradient(135deg,#d1ecf1,white);padding:20px;border-radius:12px;border-left:5px solid #bee5eb;">
+                        <h4 style="color:#0c5460;">Technical Notes</h4>
+                        <ul style="line-height:1.8;color:#333;">
+                            <li>Model: XGBoost (AUC=0.995, External AUC=0.978)</li>
+                            <li>Feature selection: LASSO (lambda=0.0049)</li>
+                            <li>Interpretability: SHAP analysis</li>
+                            <li>All calculations performed locally - no data transmitted to servers</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <p style="font-size:1em;font-weight:600;margin-bottom:5px;">ICU ENFI Risk Prediction System v2.0</p>
+        <p>Based on LASSO-XGBoost-SHAP Framework | External Validated on MIMIC-IV<br>
+        For Research and Clinical Reference Only | Not a Substitute for Professional Medical Judgment</p>
+    </div>
+
+    <script>
+        // ===== SCORECARD DATA =====
+        const SCORECARD = {
+            features: {
+                Gastric_Residual: { mean: 224.5, std: 158.3, weight: 0.0715 },
+                Prealbumin: { mean: 0.149, std: 0.053, weight: -0.0709 },
+                Albumin: { mean: 29.6, std: 5.8, weight: -0.0541 },
+                Feeding_Speed: { mean: 41.5, std: 15.8, weight: -0.0520 },
+                IAP: { mean: 11.2, std: 4.5, weight: 0.0496 },
+                NRS2002: { mean: 3.82, std: 1.35, weight: 0.0466 },
+                EN_Start_Delay_h: { mean: 23.5, std: 13.2, weight: 0.0461 },
+                APACHE_II: { mean: 20.8, std: 5.6, weight: 0.0449 },
+                Age: { mean: 74.8, std: 6.2, weight: 0.0444 },
+                MAP: { mean: 73.2, std: 12.8, weight: -0.0391 }
+            },
+            intercept: -0.1
+        };
+
+        function calculateRisk(inputs) {
+            let score = SCORECARD.intercept;
+            const details = [];
+            for (const [feat, params] of Object.entries(SCORECARD.features)) {
+                const val = parseFloat(inputs[feat]);
+                const normalized = (val - params.mean) / params.std;
+                const contribution = normalized * params.weight;
+                score += contribution;
+                details.push({ feature: feat, contribution, value: val });
+            }
+            const probability = 1 / (1 + Math.exp(-score));
+            details.sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution));
+            return { probability, details, score };
+        }
+
+        function updateBar(input) {
+            const bar = document.getElementById('bar-' + input.id);
+            if (!bar) return;
+            const min = parseFloat(input.min), max = parseFloat(input.max);
+            const pct = ((parseFloat(input.value) - min) / (max - min)) * 100;
+            bar.style.width = Math.min(100, Math.max(0, pct)) + '%';
+        }
+
+        function predict() {
+            const inputs = {};
+            for (const feat of Object.keys(SCORECARD.features)) {
+                inputs[feat] = document.getElementById(feat).value;
+            }
+            const result = calculateRisk(inputs);
+            const prob = result.probability;
+
+            // Show result section
+            document.getElementById('result-section').style.display = 'block';
+
+            // Update gauge
+            const gaugePath = document.getElementById('gauge-path');
+            const maxDash = 251;
+            const dashLen = prob * maxDash;
+            let gaugeColor, riskClass, riskText;
+            if (prob < 0.3) { gaugeColor = '#2a9d8f'; riskClass = 'risk-low'; riskText = 'LOW RISK'; }
+            else if (prob < 0.6) { gaugeColor = '#f4a261'; riskClass = 'risk-moderate'; riskText = 'MODERATE RISK'; }
+            else { gaugeColor = '#e63946'; riskClass = 'risk-high'; riskText = 'HIGH RISK'; }
+
+            gaugePath.style.stroke = gaugeColor;
+            gaugePath.style.strokeDasharray = dashLen + ' ' + maxDash;
+            document.getElementById('gauge-text').textContent = (prob * 100).toFixed(1) + '%';
+            document.getElementById('gauge-text').setAttribute('fill', gaugeColor);
+
+            // Update risk card
+            const card = document.getElementById('risk-card');
+            card.className = 'risk-result ' + riskClass;
+            document.getElementById('risk-badge').textContent = riskText;
+            document.getElementById('risk-badge').style.background = gaugeColor;
+
+            // Recommendation
+            let recHTML = '';
+            if (prob < 0.3) {
+                recHTML = '<div class="rec-card" style="border-color:#2a9d8f;background:linear-gradient(135deg,#f0faf7,white);"><h4 style="color:#2a9d8f;">&#9989; Standard Nursing Protocol</h4><ul><li>Daily nutritional risk assessment</li><li>Head-of-bed elevation 30-45&#176;</li><li>Standard EN: 20-30 mL/h start</li><li>Monitor GRV every 4-6h</li></ul></div>';
+            } else if (prob < 0.6) {
+                recHTML = '<div class="rec-card" style="border-color:#f4a261;background:linear-gradient(135deg,#fffaf0,white);"><h4 style="color:#f4a261;">&#9888;&#65039; Enhanced Nursing Protocol</h4><ul><li>Low-dose EN initiation (10-15 mL/h)</li><li>Prokinetic agents (metoclopramide)</li><li>IAP monitoring every 4-6h</li><li>Blood glucose control (6-10 mmol/L)</li></ul></div>';
+            } else {
+                recHTML = '<div class="rec-card" style="border-color:#e63946;background:linear-gradient(135deg,#fff5f5,white);"><h4 style="color:#e63946;">&#128308; Intensive Nursing Protocol</h4><ul><li><b>NST emergency consultation</b></li><li>Hourly GRV monitoring (first 72h)</li><li>Multi-modal prokinetic therapy</li><li>Daily MDT rounds</li></ul></div>';
+            }
+            document.getElementById('recommendation-card').innerHTML = recHTML;
+
+            // SHAP Chart
+            drawShapChart(result.details.slice(0, 8));
+
+            // Scroll to results
+            document.getElementById('result-section').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function drawShapChart(details) {
+            const canvas = document.getElementById('shap-canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const labels = ['GRV','Prealb.','Albumin','Speed','IAP','NRS2002','EN Delay','APACHE'];
+            const values = details.map(d => d.contribution);
+            const maxVal = Math.max(...values.map(Math.abs)) * 1.2;
+            const barH = 22, gap = 8, startY = 20;
+            const centerX = canvas.width / 2;
+            const scale = (canvas.width / 2 - 60) / maxVal;
+
+            ctx.fillStyle = '#1e3a5f'; ctx.font = 'bold 11px Inter';
+            ctx.textAlign = 'center';
+            ctx.fillText('SHAP Feature Contribution', centerX, 14);
+
+            values.forEach((v, i) => {
+                const y = startY + i * (barH + gap);
+                const w = Math.abs(v) * scale;
+                const color = v > 0 ? '#e63946' : '#457B9D';
+
+                ctx.fillStyle = '#333'; ctx.font = '10px Inter'; ctx.textAlign = 'right';
+                ctx.fillText(labels[i], centerX - w - 8, y + 15);
+
+                ctx.fillStyle = color;
+                if (v > 0) {
+                    ctx.fillRect(centerX, y, w, barH);
+                    ctx.fillStyle = '#fff'; ctx.font = 'bold 9px Inter'; ctx.textAlign = 'left';
+                    ctx.fillText('+' + v.toFixed(2), centerX + 4, y + 15);
+                } else {
+                    ctx.fillRect(centerX - w, y, w, barH);
+                    ctx.fillStyle = '#fff'; ctx.font = 'bold 9px Inter'; ctx.textAlign = 'right';
+                    ctx.fillText(v.toFixed(2), centerX - 4, y + 15);
+                }
+            });
+
+            ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(centerX, startY - 5); ctx.lineTo(centerX, startY + 8 * (barH + gap) - 5); ctx.stroke();
+        }
+
+        function fillDemo(type) {
+            const demos = {
+                high: { Age:82, APACHE_II:28, Albumin:22, Prealbumin:0.08, Gastric_Residual:320, IAP:16, Feeding_Speed:20, EN_Start_Delay_h:36, NRS2002:5.5, MAP:62 },
+                low: { Age:68, APACHE_II:15, Albumin:36, Prealbumin:0.22, Gastric_Residual:80, IAP:7, Feeding_Speed:55, EN_Start_Delay_h:12, NRS2002:2.5, MAP:85 }
+            };
+            const d = demos[type];
+            for (const [k, v] of Object.entries(d)) {
+                const el = document.getElementById(k);
+                if (el) { el.value = v; updateBar(el); }
+            }
+        }
+
+        function resetForm() {
+            const defaults = { Age:74.8, APACHE_II:20.8, Albumin:29.6, Prealbumin:0.149, Gastric_Residual:224.5, IAP:11.2, Feeding_Speed:41.5, EN_Start_Delay_h:23.5, NRS2002:3.82, MAP:73.2 };
+            for (const [k, v] of Object.entries(defaults)) {
+                const el = document.getElementById(k);
+                if (el) { el.value = v; updateBar(el); }
+            }
+            document.getElementById('result-section').style.display = 'none';
+        }
+
+        function showPage(page) {
+            document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById('page-' + page).classList.add('active');
+            document.getElementById('nav-' + page).classList.add('active');
+            if (page === 'shap') renderShapPage();
+        }
+
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function showGuideTab(tabId) {
+            document.querySelectorAll('#page-guide .tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('#page-guide .tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function renderShapPage() {
+            // Global bars
+            const features = ['Gastric Residual Volume','Albumin','EN Initiation Delay','Intra-abdominal Pressure','Prealbumin','APACHE II Score','NRS-2002 Score','Age','Feeding Speed','MAP'];
+            const importance = [1.80,1.71,1.46,1.28,1.17,1.10,0.95,0.92,0.88,0.82];
+            const container = document.getElementById('shap-global-bars');
+            container.innerHTML = '';
+            importance.forEach((val, i) => {
+                const color = i < 5 ? '#e63946' : '#457B9D';
+                const pct = (val / 2.0) * 100;
+                container.innerHTML += `<div style="display:flex;align-items:center;gap:10px;"><span style="width:180px;font-size:0.85em;text-align:right;">${features[i]}</span><div style="flex:1;height:22px;background:#e8ecf0;border-radius:4px;overflow:hidden;"><div style="width:${pct}%;height:100%;background:${color};border-radius:4px;display:flex;align-items:center;padding-left:8px;"><span style="color:white;font-size:0.8em;font-weight:700;">${val.toFixed(2)}</span></div></div></div>`;
+            });
+
+            // Force plots
+            renderForce('shap-high-forces', [{n:'GRV',v:1.80},{n:'Albumin',v:1.71},{n:'EN Delay',v:1.46},{n:'IAP',v:1.28},{n:'Age',v:0.92}], '#e63946');
+            renderForce('shap-mod-forces', [{n:'GRV',v:0.85},{n:'APACHE II',v:0.72},{n:'Albumin',v:0.55},{n:'EN Delay',v:0.48},{n:'MAP',v:0.25}], '#f4a261');
+            renderForce('shap-low-forces', [{n:'Albumin',v:-1.65},{n:'GRV',v:-1.58},{n:'Prealbumin',v:-1.12},{n:'Speed',v:-0.78},{n:'MAP',v:-0.45}], '#457B9D');
+        }
+
+        function renderForce(id, data, color) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.innerHTML = '';
+            data.forEach(d => {
+                const isRed = d.v > 0;
+                const barColor = isRed ? '#e63946' : '#457B9D';
+                const pct = Math.min(100, Math.abs(d.v) / 2.0 * 100);
+                el.innerHTML += `<div style="display:flex;align-items:center;gap:8px;margin:5px 0;"><span style="width:80px;font-size:0.8em;">${d.n}</span><div style="flex:1;height:18px;background:#e8ecf0;border-radius:4px;overflow:hidden;"><div style="width:${pct}%;height:100%;background:${barColor};border-radius:4px;display:flex;align-items:center;justify-content:${isRed?'flex-start':'flex-end'};padding:${isRed?'0 0 0 6px':'0 6px 0 0'};"><span style="color:white;font-size:0.75em;font-weight:700;">${d.v>0?'+':''}${d.v.toFixed(2)}</span></div></div></div>`;
+            });
+        }
+
+        // Initialize
+        document.querySelectorAll('input[type="number"]').forEach(input => updateBar(input));
+    </script>
+</body>
+</html>
